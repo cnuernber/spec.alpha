@@ -155,7 +155,9 @@
                    (spec-impl ::unknown o nil nil)))
             ([o form] (spec-impl form o nil nil))))
 
-(defn- specize
+;;Had to rename as lazy var loading meant SpecizeVar and specizeVar differ
+;;only by capitalization which is a classloading error.
+(defn- spcize
   ([s] (c/or (spec? s) (specize* s)))
   ([s form] (c/or (spec? s) (specize* s form))))
 
@@ -168,20 +170,20 @@
   "Given a spec and a value, returns :clojure.spec.alpha/invalid 
 	if value does not match spec, else the (possibly destructured) value."
   [spec x]
-  (conform* (specize spec) x))
+  (conform* (spcize spec) x))
 
 (defn unform
   "Given a spec and a value created by or compliant with a call to
   'conform' with the same spec, returns a value with all conform
   destructuring undone."
   [spec x]
-  (unform* (specize spec) x))
+  (unform* (spcize spec) x))
 
 (defn form
   "returns the spec as data"
   [spec]
   ;;TODO - incorporate gens
-  (describe* (specize spec)))
+  (describe* (spcize spec)))
 
 (defn abbrev [form]
   (cond
@@ -213,10 +215,10 @@
   (let [spec (reg-resolve spec)]
     (if (regex? spec)
       (assoc spec ::gfn gen-fn)
-      (with-gen* (specize spec) gen-fn))))
+      (with-gen* (spcize spec) gen-fn))))
 
 (defn explain-data* [spec path via in x]
-  (let [probs (explain* (specize spec) path via in x)]
+  (let [probs (explain* (spcize spec) path via in x)]
     (when-not (empty? probs)
       {::problems probs
        ::spec spec
@@ -279,7 +281,7 @@
 (defn- gensub
   [spec overrides path rmap form]
   ;;(prn {:spec spec :over overrides :path path :form form})
-  (let [spec (specize spec)]
+  (let [spec (spcize spec)]
     (if-let [g (c/or (when-let [gfn (c/or (get overrides (c/or (spec-name spec) spec))
                                           (get overrides path))]
                        (gfn))
@@ -770,10 +772,10 @@
 (defn valid?
   "Helper function that returns true when x is valid for spec."
   ([spec x]
-     (let [spec (specize spec)]
+     (let [spec (spcize spec)]
        (not (invalid? (conform* spec x)))))
   ([spec x form]
-     (let [spec (specize spec form)]
+     (let [spec (spcize spec form)]
        (not (invalid? (conform* spec x))))))
 
 (defn- pvalid?
@@ -997,7 +999,7 @@
   "Do not call this directly, use 'tuple'"
   ([forms preds] (tuple-impl forms preds nil))
   ([forms preds gfn]
-     (let [specs (delay (mapv specize preds forms))
+     (let [specs (delay (mapv spcize preds forms))
            cnt (count preds)]
        (reify
         Specize
@@ -1063,7 +1065,7 @@
   [keys forms preds gfn]
   (let [id (java.util.UUID/randomUUID)
         kps (zipmap keys preds)
-        specs (delay (mapv specize preds forms))
+        specs (delay (mapv spcize preds forms))
         cform (case (count preds)
                     2 (fn [x]
                         (let [specs @specs
@@ -1151,7 +1153,7 @@
 (defn ^:skip-wiki and-spec-impl
   "Do not call this directly, use 'and'"
   [forms preds gfn]
-  (let [specs (delay (mapv specize preds forms))
+  (let [specs (delay (mapv spcize preds forms))
         cform
         (case (count preds)
               2 (fn [x]
@@ -1253,7 +1255,7 @@
                :as opts}
     gfn]
      (let [gen-into (if conform-into (empty conform-into) (get empty-coll kind-form))
-           spec (delay (specize pred))
+           spec (delay (spcize pred))
            check? #(valid? @spec %)
            kfn (c/or kfn (fn [i v] i))
            addcv (fn [ret i v cv] (conj ret cv))
@@ -1814,7 +1816,7 @@
   "takes a spec and returns a spec that has the same properties except
   'conform' returns the original (not the conformed) value. Note, will specize regex ops."
   [spec]
-  (let [spec (delay (specize spec))]
+  (let [spec (delay (spcize spec))]
     (reify
      Specize
      (specize* [s] s)
@@ -1834,7 +1836,7 @@
 (defn ^:skip-wiki nilable-impl
   "Do not call this directly, use 'nilable'"
   [form pred gfn]
-  (let [spec (delay (specize pred form))]
+  (let [spec (delay (spcize pred form))]
     (reify
      Specize
      (specize* [s] s)
